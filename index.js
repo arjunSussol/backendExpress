@@ -9,6 +9,7 @@ app.use(express.json());
 app.use(morgan(':body :method :status :res[content-length] - :response-time ms'));
 // app.use(morgan('tiny'));
 app.use(cors());
+app.use(express.static('frontend'));
 
 const dummyData = require('./db.json');
 

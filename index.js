@@ -1,5 +1,6 @@
 const express = require('express');
 const morgan = require('morgan');
+const cors = require('cors');
 
 const app = express();
 morgan.token('body', (req, res) => JSON.stringify(req.body));
@@ -7,6 +8,7 @@ morgan.token('body', (req, res) => JSON.stringify(req.body));
 app.use(express.json());
 app.use(morgan(':body :method :status :res[content-length] - :response-time ms'));
 // app.use(morgan('tiny'));
+app.use(cors());
 
 const dummyData = require('./db.json');
 

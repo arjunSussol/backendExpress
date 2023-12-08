@@ -1,6 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
+
+const Person = require('./models/person');
+
+const { PORT } = process.env;
 
 const app = express();
 morgan.token('body', (req, res) => JSON.stringify(req.body));
@@ -11,60 +16,74 @@ app.use(morgan(':body :method :status :res[content-length] - :response-time ms')
 app.use(cors());
 app.use(express.static('frontend'));
 
-const dummyData = require('./db.json');
-
-const PORT = 3001;
 const currentDate = new Date();
 
-const generateID = () => {
-  const maxID = Math.ceil(Math.random()) * dummyData.length;
-  return maxID + 1;
-};
-app.get('/api/persons', (req, res) => res.json(dummyData));
-
-app.get('/api/info', (req, res) => res.send(`Phonebook has info for ${dummyData.length} people. <br/> ${currentDate}`));
-
-app.get('/api/persons/:id', (req, res) => {
-  const personID = Number(req.params.id);
-  const person = dummyData.find((n) => n.id === personID);
-  return person ? res.json(person) : res.status(404).send(`ID ${personID} doesn't exist!`);
+app.get('/api/persons', (req, res, next) => {
+  Person.find({})
+    .then(persons => res.json(persons))
+    .catch(error => next(error));
 });
 
-app.delete('/api/persons/:id', (req, res) => {
-  const personID = Number(req.params.id);
-  const person = dummyData.filter(({ id }) => id !== personID);
-  res.json(person);
+app.get('/api/info', (req, res, next) => {
+  Person.find({})
+    .then(list => res.send(`Phonebook has info for ${list.length} people. <br/> ${currentDate}`))
+    .catch(error => next(error));
 });
 
-app.post('/api/persons', (req, res) => {
+app.get('/api/persons/:id', (req, res, next) => {
+  const personID = req.params.id;
+  Person.findById(personID)
+    .then(person => res.json(person))
+    .catch(error => next(error));
+});
+
+app.delete('/api/persons/:id', (req, res, next) => {
+  const personID = req.params.id;
+
+  Person.findByIdAndDelete(personID)
+    .then(() => res.status(204).end())
+    .catch(error => next(error));
+});
+
+app.post('/api/persons', (req, res, next) => {
   const { name, number } = req.body;
   if (!name || !number) {
     return res.status(400).send({ error: 'name or number is missing' });
   }
 
-  if (dummyData.find((p) => p.name === name)) {
-    return res.status(400).send({ error: 'name must be unique' });
-  }
-
-  const person = {
-    id: generateID(),
+  const person = new Person({
     name,
     number,
-  };
+  });
 
-  dummyData.push(person);
-  return res.json(dummyData);
+  return person.save(person)
+    .then(savedRecord => res.json(savedRecord))
+    .catch(error => next(error));
 });
 
-app.put('/api/persons/:id', (req, res) => {
+app.put('/api/persons/:id', (req, res, next) => {
   const { name, number } = req.body;
-  const personID = Number(req.params.id);
-  let person = dummyData.find(({ id }) => id === personID);
-  person = { ...person, name, number };
-  console.log(person);
-
-  const persons = dummyData.map((p) => (p.id === personID ? person : p));
-  res.json(persons);
+  const personID = req.params.id;
+  Person.findByIdAndUpdate(
+    personID,
+    { name, number },
+    { new: true, runValidators: true, context: 'query' },
+  )
+    .then(updatedRecord => res.json(updatedRecord))
+    .catch(error => next(error));
 });
+
+// error handler middleware
+const errorHandler = (error, req, res, next) => {
+  console.log(error.message);
+  if (error.name === 'CastError') {
+    return res.status(400).send({ error: 'malfommated id' });
+  } if (error.name === 'ValidationError') {
+    return res.status(400).json({ error: error.message });
+  }
+  return next(error);
+};
+
+app.use(errorHandler);
 
 app.listen(PORT, () => console.log(`Server is listening on port ${PORT}`));

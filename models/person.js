@@ -19,7 +19,7 @@ const personSchema = new mongoose.Schema({
   number: {
     type: String,
     validate: {
-      validator: phone => /\d{3}-\d{7}/.test(phone),
+      validator: phone => /^(\d{2}|\d{3})-\d*$/.test(phone),
       message: props => `${props.value} is not a valid phone number!. Should follow the format XXX-XXXXXXX`,
     },
     required: [true, 'Phone number is mandatory'],

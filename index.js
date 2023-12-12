@@ -75,7 +75,7 @@ app.put('/api/persons/:id', (req, res, next) => {
 
 // error handler middleware
 const errorHandler = (error, req, res, next) => {
-  console.log(error.message);
+  console.log(error);
   if (error.name === 'CastError') {
     return res.status(400).send({ error: 'malfommated id' });
   } if (error.name === 'ValidationError') {
